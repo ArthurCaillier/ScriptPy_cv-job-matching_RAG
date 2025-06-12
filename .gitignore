@@ -1,0 +1,23 @@
+# Fichiers d'environnement
+.env
+# Environnements virtuels
+.venv/
+
+# Dossiers de données 
+data/
+
+# Fichiers Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Logs et fichiers temporaires
+*.log
+logs/
+temp/

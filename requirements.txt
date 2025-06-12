@@ -1,0 +1,24 @@
+# Fichier de dépendances Python pour le projet de matching CV-Offres
+
+# Manipulation de Données
+pandas 
+numpy 
+
+# Traitement du Langage Naturel (NLP)
+sentence-transformers # Pour générer des embeddings de phrases/documents (modèle all-MiniLM-L6-v2)
+chromadb
+requests
+python-dotenv
+transformers # Pour utiliser Mistral et autres modèles LLM
+accelerate # Pour optimiser l'utilisation des LLMs
+bitsandbytes # Pour quantification en 4/8 bits
+
+# Base de Données Vectorielle
+chromadb # Pour stocker et rechercher des embeddings vectoriels efficacement
+
+# Calcul de Similarité & Machine Learning 
+scikit-learn # ici spécifiquement pour cosine_similarity 
+
+# Visualisation (Optionnel)
+matplotlib
+seaborn
