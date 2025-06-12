@@ -81,8 +81,5 @@ print(job_sampled_df['processed_text'].iloc[0][:200] + "...")
 print(cv_sampled_df['processed_text'].iloc[0][:200] + "...")
 
 #*------ Export des données prétraitées ------*#
-output_job_path = 'data/processed_jobs_v2.csv'
-output_cv_path = 'data/processed_resumes_v2.csv'
-
-job_sampled_df.to_csv(output_job_path, index=False)
-cv_sampled_df.to_csv(output_cv_path, index=False)
+job_sampled_df.to_csv('data/processed_jobs.csv', index=False)
+cv_sampled_df.to_csv('data/processed_resumes.csv', index=False)
