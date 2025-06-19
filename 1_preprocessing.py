@@ -1,11 +1,10 @@
 """
-Ce code est une version simplifiée du prétraitement pour le système de recommandation CV-offres.
+Ce code assure le prétraitement des données pour le système de recommandation CV-offres.
 Il se concentre uniquement sur les variables essentielles pour faciliter le matching via RAG.
 """
 # Chargement packages
 import pandas as pd
 import re
-import os
 
 #*------ Chargement & Résumé des Datasets -------*#
 #*------ Dataset Offres d'emploi ------*#
@@ -35,7 +34,7 @@ def preprocess_text(text):
     text = re.sub(r'\s+', ' ', text)  # Normaliser les espaces
     return text.strip()
 
-# Combinaison des caractéristiques (comme dans le script original)
+# Combinaison des caractéristiques
 def combine_features(row):
     """Combine les caractéristiques pertinentes en une seule chaîne de texte."""
     features = []

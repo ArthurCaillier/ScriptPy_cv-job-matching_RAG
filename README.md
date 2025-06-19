@@ -1,15 +1,14 @@
 # Système de matching CV-Offres d'emploi avec RAG
 
-Ce projet implémente un système de correspondance entre CV et offres d'emploi utilisant une approche de Retrieval-Augmented Generation (RAG) basée sur des modèles de langage avancés.
+Ce projet implémente un système de correspondance entre CV et offres d'emploi utilisant une approche de Retrieval-Augmented Generation (RAG) basée sur des embeddings sémantiques, ChromaDB et des modèles de langage avancés.
 
 ## Architecture du système
 
-Le système suit une architecture RAG en 4 étapes:
+Le système suit une architecture RAG en 3 étapes principales :
 
-1. **Préparation des données**: Extraction et prétraitement des textes de CV et d'offres d'emploi
-2. **Génération d'embeddings**: Création de représentations vectorielles des documents
-3. **Stockage et récupération vectorielle**: Utilisation d'une base de données vectorielle pour trouver les documents similaires
-4. **Génération et évaluation**: Analyse de la correspondance entre CV et offres par un LLM
+1. **Prétraitement des données**: Extraction et nettoyage des textes de CV et d'offres d'emploi
+2. **Embeddings et stockage vectoriel**: Création de représentations vectorielles des documents et stockage dans ChromaDB avec mesure de similarité cosinus
+3. **Recherche contextuelle et génération**: Récupération des documents similaires et analyse par LLM pour déterminer la compatibilité
 
 ## Sources de données
 
@@ -26,14 +25,12 @@ Le projet utilise deux ensembles de données de Kaggle :
 ```
 Azure_ModelLLM/
 ├── 1_preprocessing.py         # Script de prétraitement des données
-├── 2_embeddings.py            # Script de génération d'embeddings
-├── 3_chromadb_retrieval.py    # Script d'indexation dans ChromaDB
-├── 4_rag.py                   # Script final pour exécuter le pipeline RAG
+├── 2_embeddings_chroma.py     # Script combiné de génération d'embeddings et stockage ChromaDB
+├── 3_rag.py                   # Script RAG pour le matching CV-Offres
 ├── .env                       # Fichier pour les variables d'environnement (API keys)
 ├── data/                      # Dossier contenant les données
 │   ├── raw/                   # Données brutes & prétraitées (CSV)
-│   ├── embeddings/            # Fichiers pickle des embeddings
-│   └── chromadb/              # Base de données vectorielle ChromaDB
+│   └── chromadb/              # Base de données vectorielle ChromaDB (stockage persistant)
 └── README.md                  # Ce fichier
 ```
 
@@ -42,49 +39,46 @@ Azure_ModelLLM/
 ### 1. Prétraitement des données (`1_preprocessing.py`)
 
 - Charge les données brutes des CV et offres d'emploi
-- Nettoie et structure les textes
+- Nettoie et structure les textes 
 - Simplifie le jeu de données en ne gardant que les colonnes essentielles:
   - Pour les CV: `cv_id`, `processed_text`, `Category`
   - Pour les offres: `job_id`, `processed_text`, `title`
-- Sauvegarde les données prétraitées
+- Sauvegarde les données prétraitées en CSV
 
-### 2. Génération d'embeddings (`2_embeddings.py`)
+### 2. Embeddings et stockage ChromaDB (`2_embeddings_chroma.py`)
 
-- Utilise le modèle `all-MiniLM-L6-v2` de sentence-transformers
-- Génère des embeddings de dimension 384 pour chaque document
-- Sauvegarde les dataframes avec embeddings dans des fichiers pickle
-- Exemple de recherche de similarité pour vérification
-
-### 3. Indexation dans ChromaDB (`3_chromadb_retrieval.py`)
-
-- Crée des collections ChromaDB pour CV et offres d'emploi
+- Charge les données prétraitées
+- Utilise `SentenceTransformerEmbeddingFunction` avec le modèle `all-MiniLM-L6-v2`
+- Crée des collections ChromaDB avec **métrique de similarité cosinus** explicite
 - Structure des documents dans ChromaDB:
   - Document: Le texte prétraité
-  - Embedding: Le vecteur représentant le document
-  - Metadata: ID unique, catégorie (CV) ou titre (offre)
-- Batch insertion pour optimiser les performances
-- Exemples de requêtes de similarité pour test
+  - Embedding: Généré automatiquement par la fonction d'embedding
+  - Metadata: Catégorie (CV) ou titre (offre)
+  - ID: Identifiant unique des CV/offres
+- Insertion par batch pour optimiser les performances
+- Inclut des fonctions de diagnostic pour vérifier les performances du matching
+- Teste des exemples de requêtes par texte et par embedding
 
-### 4. RAG avec LLM (`4_rag.py`)
+### 3. RAG avec LLM (`3_rag.py`)
 
-- Connecte aux collections ChromaDB
-- Pour une requête (CV ou offre):
-  - Récupère les documents les plus similaires
-  - Calcule des scores de similarité normalisés entre 0-100%
-  - Prépare un prompt pour le LLM avec les documents récupérés
-  - Appelle l'API Hugging Face pour Mistral
-  - Affiche les résultats structurés
-- Supporte deux modes:
-  - CV → Offres d'emploi correspondantes
-  - Offre d'emploi → CV correspondants
+- Connecte aux collections ChromaDB existantes
+- Définit une fonction optimisée `retrieve_top_k` qui:
+  - Gère les requêtes par texte ou embedding
+  - Convertit la distance cosinus en score de similarité: `(1 - distance/2) * 100`
+  - Traite correctement les métadonnées et IDs retournés par ChromaDB
+- Propose deux fonctions principales:
+  - `ask_for_best_jobs`: CV → Offres d'emploi correspondantes
+  - `ask_for_best_cvs`: Offre d'emploi → CV correspondants
+- Génère des réponses en français via l'API Hugging Face pour Mixtral
 
 ## Caractéristiques principales
 
-1. **Structure de données optimisée**: Conservation uniquement des colonnes essentielles
-2. **ID explicites**: Stockage des identifiants uniques (cv_id, job_id) dans les métadonnées
-3. **Scores de similarité intuitifs**: Conversion des distances L2² en pourcentages de similarité
-4. **Batch processing**: Insertion par lots pour une meilleure performance
-5. **Métadonnées enrichies**: Stockage de métadonnées pertinentes pour faciliter l'interprétation
+1. **Métrique cosinus explicite**: Utilisation explicite de la similarité cosinus dans ChromaDB via `metadata={"hnsw:space": "cosine"}`
+2. **Gestion robuste des métadonnées**: Traitement correct de la structure particulière des métadonnées retournées par ChromaDB
+3. **IDs correctement associés**: Récupération et affichage des identifiants uniques des documents dans les résultats
+4. **Conversion de distance optimisée**: Transformation de la distance cosinus en score de similarité intuitif
+5. **Batch processing**: Insertion par lots pour une meilleure performance
+6. **Pipeline RAG intégré**: Connexion transparente entre la recherche vectorielle et la génération contextuelle
 
 ## Configuration requise
 
@@ -114,40 +108,39 @@ pip install -r requirements.txt
 
 1. Exécuter le prétraitement:
    ```bash
-   python 1_preprocessing_v2.py
+   python 1_preprocessing.py
    ```
 
-2. Générer les embeddings:
+2. Générer les embeddings et créer les collections ChromaDB:
    ```bash
-   python 2_embeddings_v2.py
-   ```
-
-3. Indexer dans ChromaDB:
-   ```bash
-   python 3_chromadb_retrieval_v2.py
+   python 2_embeddings_chroma.py
    ```
 
 ### Exécution du RAG
 
 Pour lancer le système RAG avec des exemples intégrés:
 ```bash
-python 4_rag.py
+python 3_rag.py
 ```
 
 Pour tester avec vos propres requêtes:
-1. Modifier les exemples de CV ou d'offres dans `4_rag.py`
+1. Modifier les exemples de CV ou d'offres dans `3_rag.py`
 2. Exécuter le script
 
 ## Notes techniques
 
-- **Calcul de similarité**: ChromaDB utilise la distance euclidienne au carré (L2²). Nous la convertissons en score de similarité avec la formule: `(1 - distance/2) * 100`
-- **Modèle LLM**: Le système utilise Mistral via l'API Hugging Face, mais peut être adapté à d'autres LLMs.
-- **Performance**: Le système est optimisé pour équilibrer précision et efficacité. Les requêtes les plus lourdes sont la génération LLM.
+- **Métrique de similarité**: ChromaDB est configuré pour utiliser la **similarité cosinus** au lieu de la distance euclidienne par défaut
+- **Calcul de similarité**: Conversion de la distance cosinus (0 à 2) en pourcentage de similarité avec la formule: `(1 - distance/2) * 100`
+- **Structure des métadonnées**: ChromaDB retourne les métadonnées sous forme d'une liste de dictionnaires individuels, nécessitant un traitement adapté
+- **Modèle LLM**: Le système utilise Mixtral via l'API Hugging Face, configuré pour générer des réponses en français
+- **Performance**: Les scores de similarité avec la métrique cosinus atteignent généralement >70% pour les correspondances pertinentes
 
 ## Améliorations possibles
 
-- Intégration de techniques de filtrage préalable par catégories
+- Intégration de techniques de filtrage préalable par catégories (pré-filtrage)
+- Adaptation du contexte fourni au LLM en fonction du type de requête
 - Support multilingue pour CV et offres en différentes langues
 - Interface utilisateur web pour interroger le système
 - Caching des réponses LLM pour les requêtes répétitives
-- Fine-tuning du LLM spécifiquement pour l'évaluation CV-offres
+- Possibilité de feedback utilisateur pour améliorer les correspondances
+- Ajout d'un système d'explication de scores de similarité plus détaillé

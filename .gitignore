@@ -6,10 +6,6 @@
 # Dossiers de données 
 data/
 
-# Si vous avez d'autres dossiers de données ailleurs dans le projet
-**/data/embeddings/
-**/data/chromadb/
-
 # Fichiers Python
 __pycache__/
 *.py[cod]
